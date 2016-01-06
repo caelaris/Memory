@@ -59,16 +59,35 @@ function Memory() {
      */
     self.processing = false;
 
+    self.base = null;
+
+    self.clicks = 0;
+
+    self.matches = 0;
+
     /**
      * Initialize the memory game board
      *
      * @param element
      */
     self.init = function(element) {
-        self.cards = element.children(".card");
+        self.base = element;
+        self.cards = self.base.children(".card");
+
+        self.loadHighScore();
 
         self.shuffleData();
         self.registerEvents();
+    };
+
+    /**
+     * Load high score from local storage
+     */
+    self.loadHighScore = function () {
+        if (localStorage.highscore) {
+            var high_score = self.base.find('.high_score > .count');
+            high_score.html(Number(localStorage.highscore));
+        }
     };
 
     /**
@@ -118,8 +137,28 @@ function Memory() {
         self.open = null;
         self.current = null;
 
+        self.matches++;
+
+        if (self.matches == self.cards.length / 2) {
+            self.complete();
+        }
+
         /** Allow for processing of clicks to resume **/
         self.processing = false;
+    };
+
+    /**
+     * Process completion of game
+     */
+    self.complete = function() {
+        var high_score = self.base.find('.high_score > .count');
+        if (localStorage.highscore && Number(localStorage.highscore) > self.clicks) {
+            localStorage.highscore = self.clicks;
+            high_score.html(self.clicks);
+        } else {
+            localStorage.highscore = self.clicks;
+            high_score.html(self.clicks);
+        }
     };
 
     /**
@@ -139,6 +178,14 @@ function Memory() {
     };
 
     /**
+     * Update move counter
+     */
+    self.updateScore = function() {
+        var counter = self.base.find('.score > .count');
+        counter.html(self.clicks);
+    };
+
+    /**
      * Register necessary events
      */
     self.registerEvents = function() {
@@ -152,6 +199,9 @@ function Memory() {
                  **/
                 return;
             }
+
+            self.clicks++;
+            self.updateScore();
 
             /** Currently processing click, so stop all other processing **/
             self.processing = true;

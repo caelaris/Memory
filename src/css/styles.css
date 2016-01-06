@@ -1,10 +1,6 @@
 html {
-    background     : url("../img/background.jpg") no-repeat center center fixed;
+    background     : url("../img/background.jpg") no-repeat center center fixed #6F4242;
     background-size: cover;
-}
-
-body {
-    background : #6F4242;
 }
 
 .game-board {
@@ -21,6 +17,18 @@ body {
     float               : left;
     margin              : 1.5%;
     border-radius       : 10px;
+}
+
+.score,
+.high_score {
+    color: white;
+    font-family: "HearthStone";
+    font-size: large;
+}
+
+@font-face {
+    font-family: HearthStone;
+    src: url(../font/OPTIBelwe-Medium.otf);
 }
 
 @keyframes pulse {
