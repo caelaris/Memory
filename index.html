@@ -8,30 +8,9 @@
         <script src="src/js/memory.js"></script>
     </head>
     <body>
-        <div class="game-board">
-            <div class="score">
-                <span class="title">Moves: </span><span class="count">0</span>
-            </div>
-            <div class="high_score">
-                <span class="title">Your High Score: </span><span class="count">0</span>
-            </div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-            <div class="card"></div>
-        </div>
-
         <script type="text/javascript">
             var memory = new Memory();
-            memory.init($(".game-board"));
+            memory.init($("body"), { 'cardTotal' : 12});
         </script>
     </body>
 </html>

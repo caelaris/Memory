@@ -69,10 +69,24 @@ function Memory() {
      * Initialize the memory game board
      *
      * @param element
+     * @param options
      */
-    self.init = function(element) {
+    self.init = function(element, options) {
+        if (typeof options === 'undefined') {
+            options = {};
+        }
+
+        self.cardTotal = options.cardTotal || self.fronts.length * 2;
+
+        if (self.cardTotal/2 > self.fronts.length) {
+            console.log('Not enough card fronts to make a game this size, returning to default size');
+            self.cardTotal = self.fronts.length * 2;
+        }
+
         self.base = element;
-        self.cards = self.base.children(".card");
+
+        self.buildGame();
+        self.cards = self.gameBoard.children(".card");
 
         self.loadHighScore();
 
@@ -81,12 +95,43 @@ function Memory() {
     };
 
     /**
+     * Builds the game board and cards
+     *
+     * @todo refactor code
+     */
+    self.buildGame = function() {
+        var gameBoard = $("<div>", {'class' : 'game-board'});
+
+        var score = $("<div>", {'class': 'score'});
+        var scoreTitle = $("<span>", {'class': 'title', 'html': 'Moves: '});
+        var scoreCount = $("<span>", {'class': 'count', 'html': 0});
+
+        score.append(scoreTitle);
+        score.append(scoreCount);
+        gameBoard.append(score);
+
+        var highScore = $("<div>", {'class': 'high-score'});
+        var highScoreTitle = $("<span>", {'class': 'title', 'html': 'Your High Score: '});
+        var highScoreCount = $("<span>", {'class': 'count', 'html': 0});
+
+        highScore.append(highScoreTitle);
+        highScore.append(highScoreCount);
+        gameBoard.append(highScore);
+
+        for ( i = 0; i < self.cardTotal; i++) {
+            gameBoard.append($("<div>", {'class': 'card'}));
+        }
+        self.gameBoard = gameBoard;
+        self.base.append(gameBoard);
+    };
+
+    /**
      * Load high score from local storage
      */
     self.loadHighScore = function () {
         if (localStorage.highscore) {
-            var high_score = self.base.find('.high_score > .count');
-            high_score.html(Number(localStorage.highscore));
+            var highScore = self.base.find('.high-score > .count');
+            highScore.html(Number(localStorage.highscore));
         }
     };
 
@@ -96,7 +141,7 @@ function Memory() {
      * @returns {number}
      */
     self.random = function () {
-        var rand = Math.floor(Math.random() * self.cards.length / 2);
+        var rand = Math.floor(Math.random() * self.cardTotal / 2);
 
         if (-1 != self.usedOnce.indexOf(rand) && -1 != self.usedAgain.indexOf(rand)) {
             /** If the selected index is already used twice, generate new index **/
@@ -139,7 +184,7 @@ function Memory() {
 
         self.matches++;
 
-        if (self.matches == self.cards.length / 2) {
+        if (self.matches == self.cardTotal / 2) {
             self.complete();
         }
 
@@ -151,13 +196,13 @@ function Memory() {
      * Process completion of game
      */
     self.complete = function() {
-        var high_score = self.base.find('.high_score > .count');
+        var highScore = self.base.find('.high-score > .count');
         if (localStorage.highscore && Number(localStorage.highscore) > self.clicks) {
             localStorage.highscore = self.clicks;
-            high_score.html(self.clicks);
-        } else {
+            highScore.html(self.clicks);
+        } else if (!localStorage.highscore) {
             localStorage.highscore = self.clicks;
-            high_score.html(self.clicks);
+            highScore.html(self.clicks);
         }
     };
 
