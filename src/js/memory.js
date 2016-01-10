@@ -704,40 +704,53 @@ function AI(number, cardTotal) {
      */
     self.play = function() {
         if (self.finished) {
+            /** If game is finished, stop playing **/
             return false;
         }
 
+        /** Search card memory for a matching card**/
+        self.searchMemory();
+
+        if (self.matchedIndex === false) {
+            /** If no matching card has been found, select a random card **/
+            self.matchedIndex = self.random();
+        }
+
+        /** select the required card and trigger a click **/
+        var selectedCard = $('.game-board .card').eq(self.matchedIndex).trigger('click');
+
+        if (self.invalid) {
+            /** If current selected card is invalid, try another card **/
+            self.invalid = false;
+            return self.play();
+        }
+
+        if (null === self.visibleCard) {
+            /** If no card is visible, set current card as visible card **/
+            self.visibleCard = selectedCard.data('img');
+            self.visibleCardIndex = selectedCard.data('index');
+        } else {
+            /** Clear all visible cards **/
+            self.visibleCard = null;
+            self.visibleCardIndex = null;
+        }
+
+        if (!self.cardMemory[selectedCard.data('index')] && selectedCard.data('img') !== null){
+            /** Add selected card to card memory **/
+            self.cardMemory[selectedCard.data('index')] = selectedCard.data('img');
+        }
+    };
+
+    /**
+     * Search memory for a match to the current visible card
+     */
+    self.searchMemory = function() {
         self.matchedIndex = false;
         $.each(self.cardMemory, function(index, value) {
             if (index != self.visibleCardIndex && value == self.visibleCard) {
                 self.matchedIndex = index;
             }
         });
-
-        if (self.matchedIndex === false) {
-            self.matchedIndex = self.random();
-        }
-
-        var selectedCard = $('.game-board .card').eq(self.matchedIndex);
-
-        selectedCard.trigger('click');
-
-        if (self.invalid) {
-            self.invalid = false;
-            return self.play();
-        }
-
-        if (null === self.visibleCard) {
-            self.visibleCard = selectedCard.data('img');
-            self.visibleCardIndex = selectedCard.data('index');
-        } else {
-            self.visibleCard = null;
-            self.visibleCardIndex = null;
-        }
-
-        if (!self.cardMemory[selectedCard.data('index')] && selectedCard.data('img') !== null){
-            self.cardMemory[selectedCard.data('index')] = selectedCard.data('img');
-        }
     };
 
     /**
