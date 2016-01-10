@@ -29,18 +29,21 @@ function Memory() {
 
     /**
      * Counter for used fronts
+     *
      * @type {Array}
      */
     self.usedOnce  = [];
 
     /**
      * Second counter for used fronts
+     *
      * @type {Array}
      */
     self.usedAgain = [];
 
     /**
      * Previously opened card
+     *
      * @type {null}
      */
     self.open = null;
@@ -59,11 +62,42 @@ function Memory() {
      */
     self.processing = false;
 
+    /**
+     * Base element in which to build the game board
+     *
+     * @type {null}
+     */
     self.base = null;
 
-    self.clicks = 0;
-
+    /**
+     * Total number of matches found in the current game
+     *
+     * @type {number}
+     */
     self.matches = 0;
+
+    /**
+     * Total number of cards in the game
+     *
+     * @type {number}
+     */
+    self.cardTotal = 0;
+
+    /**
+     * jQuery element for the game board
+     *
+     * @type {null}
+     */
+    self.gameBoard = null;
+
+    /**
+     * Current player
+     *
+     * @type {number}
+     */
+    self.activePlayer = 1;
+
+    self.registered = false;
 
     /**
      * Initialize the memory game board
@@ -72,6 +106,8 @@ function Memory() {
      * @param options
      */
     self.init = function(element, options) {
+        self.base = element;
+
         if (typeof options === 'undefined') {
             options = {};
         }
@@ -83,15 +119,34 @@ function Memory() {
             self.cardTotal = self.fronts.length * 2;
         }
 
-        self.base = element;
+        self.buildMenu();
+
+        self.registerEvents();
+
+    };
+
+    /**
+     * Build start menu html
+     */
+    self.buildMenu = function() {
+        var menu = $('<div>', {'class': 'menu'});
+        self.base.append(menu);
+        menu.append($('<div>', {'class': 'start', 'html': 'Start'}));
+    };
+
+    self.start = function() {
+        //self.p1 = new AI(1);
+        self.p2 = new AI(2, self.cardTotal);
+        self.p1 = new Player(1, self.cardTotal);
+        //self.p2 = new Player(2);
 
         self.buildGame();
         self.cards = self.gameBoard.children(".card");
 
-        self.loadHighScore();
-
         self.shuffleData();
-        self.registerEvents();
+
+        setTimeout(self.getActivePlayer().play, 1000);
+
     };
 
     /**
@@ -100,39 +155,27 @@ function Memory() {
      * @todo refactor code
      */
     self.buildGame = function() {
-        var gameBoard = $("<div>", {'class' : 'game-board'});
+        self.gameBoard = $("<div>", {'class' : 'game-board'});
 
-        var score = $("<div>", {'class': 'score'});
-        var scoreTitle = $("<span>", {'class': 'title', 'html': 'Moves: '});
-        var scoreCount = $("<span>", {'class': 'count', 'html': 0});
+        var header = $("<div>", {'class': 'header'});
 
-        score.append(scoreTitle);
-        score.append(scoreCount);
-        gameBoard.append(score);
+        var p1 = self.p1.buildPlayerStatsElement();
 
-        var highScore = $("<div>", {'class': 'high-score'});
-        var highScoreTitle = $("<span>", {'class': 'title', 'html': 'Your High Score: '});
-        var highScoreCount = $("<span>", {'class': 'count', 'html': 0});
+        header.append(p1);
 
-        highScore.append(highScoreTitle);
-        highScore.append(highScoreCount);
-        gameBoard.append(highScore);
+        var p2 = self.p2.buildPlayerStatsElement();
 
-        for ( i = 0; i < self.cardTotal; i++) {
-            gameBoard.append($("<div>", {'class': 'card'}));
+        header.append(p2);
+
+        self.gameBoard.append(header);
+        var clear = $("<div>", {'class': 'clear'});
+        self.gameBoard.append(clear);
+
+        for (var i = 0; i < self.cardTotal; i++) {
+            self.gameBoard.append($("<div>", {'class': 'card', 'data-index': i}));
         }
-        self.gameBoard = gameBoard;
-        self.base.append(gameBoard);
-    };
 
-    /**
-     * Load high score from local storage
-     */
-    self.loadHighScore = function () {
-        if (localStorage.highscore) {
-            var highScore = self.base.find('.high-score > .count');
-            highScore.html(Number(localStorage.highscore));
-        }
+        self.base.append(self.gameBoard);
     };
 
     /**
@@ -182,10 +225,12 @@ function Memory() {
         self.open = null;
         self.current = null;
 
+        self.getActivePlayer().scores();
+
         self.matches++;
 
         if (self.matches == self.cardTotal / 2) {
-            self.complete();
+            self.end();
         }
 
         /** Allow for processing of clicks to resume **/
@@ -195,15 +240,29 @@ function Memory() {
     /**
      * Process completion of game
      */
-    self.complete = function() {
-        var highScore = self.base.find('.high-score > .count');
-        if (localStorage.highscore && Number(localStorage.highscore) > self.clicks) {
-            localStorage.highscore = self.clicks;
-            highScore.html(self.clicks);
-        } else if (!localStorage.highscore) {
-            localStorage.highscore = self.clicks;
-            highScore.html(self.clicks);
+    self.end = function() {
+        self.p1.complete();
+        self.p2.complete();
+
+        if (self.p1.score > self.p2.score) {
+            self.winner = self.p1;
+        } else if (self.p2.score > self.p1.score) {
+            self.winner = self.p2;
+        } else {
+            self.winner = false;
         }
+
+        self.buildScoreBoard();
+    };
+
+    self.buildScoreBoard = function() {
+        self.base.find('.game-board .card').remove();
+
+        var menu = $('<div>', {'class': 'menu'});
+        self.base.append(menu);
+        menu.append($('<div>', {'class': 'winner', 'html' : 'Winner: ' + self.winner.getName()}));
+
+        menu.append($('<div>', {'class': 'restart', 'html': 'Restart'}));
     };
 
     /**
@@ -223,17 +282,71 @@ function Memory() {
     };
 
     /**
-     * Update move counter
+     * Returns active player
+     *
+     * @returns {Player|*}
      */
-    self.updateScore = function() {
-        var counter = self.base.find('.score > .count');
-        counter.html(self.clicks);
+    self.getActivePlayer = function() {
+        if (self.activePlayer == 1) {
+            return self.p1;
+        } else {
+            return self.p2;
+        }
+    };
+
+    /**
+     * Changes the active player
+     */
+    self.changeActivePlayer = function() {
+        if (self.activePlayer == 1) {
+            self.base.find('.game-board .card').removeClass(self.getActivePlayer().prefix + '-active');
+            self.activePlayer = 2;
+        } else {
+            self.base.find('.game-board .card').removeClass(self.getActivePlayer().prefix + '-active');
+            self.activePlayer = 1;
+        }
     };
 
     /**
      * Register necessary events
      */
     self.registerEvents = function() {
+        if (self.registered) {
+            return true;
+        }
+
+        self.registered = true;
+
+        /** Register click on start menu **/
+        $(document).on('click', '.start', function () {
+            $(this).parent().remove();
+            self.start();
+        });
+
+        /** Animate Active Card with player color **/
+        $(document).on('mouseover', '.game-board .card', function () {
+            $(this).addClass(self.getActivePlayer().prefix + '-active');
+        });
+
+        /** Register click on restart button **/
+        $(document).on('click', '.menu .restart', function () {
+            $(this).parent().remove();
+            self.base.find('.game-board').remove();
+            self.cards = [];
+            self.open = null;
+            self.current = null;
+            self.processing = false;
+            self.matches = 0;
+            self.gameBoard = null;
+            self.activePlayer = 1;
+            self.p1 = null;
+            self.p2 = null;
+            self.usedOnce  = [];
+            self.usedAgain = [];
+            $(document).off('click', '.game-board .card', false);
+            self.start();
+        });
+
         $(document).on('click', '.game-board .card', function () {
             if (self.processing || true == $(this).data('success') || $(this).is(self.open)) {
                 /**
@@ -242,11 +355,11 @@ function Memory() {
                  * or on a successfully matched card
                  * don't do anything
                  **/
+                self.getActivePlayer().invalidMove();
                 return;
             }
 
-            self.clicks++;
-            self.updateScore();
+            self.getActivePlayer().moves();
 
             /** Currently processing click, so stop all other processing **/
             self.processing = true;
@@ -256,6 +369,7 @@ function Memory() {
 
             /** Reveal currently selected card **/
             self.current.css("background-image", self.current.data('img'));
+            $(this).removeClass(self.getActivePlayer().prefix + '-active');
 
             if (self.open == null) {
                 /** If this is the first card selected, only register it as being open and allow for new clicks **/
@@ -267,7 +381,402 @@ function Memory() {
             } else {
                 /** If the currently selected card does not match the open card, reset both cards**/
                 setTimeout(self.reset, 500);
+                self.changeActivePlayer();
+            }
+
+            setTimeout(self.getActivePlayer().play, 1000);
+        });
+    };
+}
+
+function Player(number) {
+    var self = this;
+
+    /**
+     * Players number
+     */
+    self.number = number;
+
+    /**
+     * Player prefix
+     *
+     * @type {string}
+     */
+    self.prefix = 'p' + number;
+
+    /**
+     * Players current move count
+     *
+     * @type {number}
+     */
+    self.move = 0;
+
+    /**
+     * Players current score
+     *
+     * @type {number}
+     */
+    self.score = 0;
+
+    /**
+     * Base html element for the player stats
+     *
+     * @type {null}
+     */
+    self.base = null;
+
+    /**
+     * Build and return the html elements for this player
+     *
+     * @returns {null|*}
+     */
+    self.buildPlayerStatsElement = function () {
+        var playerStats = $("<div>", {'class': 'p' + self.number});
+
+        playerStats.append($("<div>", {'class' : 'player-name', 'html' : 'Player ' + self.number}));
+        playerStats.append(self.generateScoringElement('score', 'Score: ', 0));
+        playerStats.append(self.generateScoringElement('moves', 'Moves: ', 0));
+        playerStats.append(self.generateScoringElement('high-score', 'High Score: ', self.getHighScoreCount()));
+
+        self.base = playerStats;
+
+        return self.base;
+    };
+
+    /**
+     * Build a scoring element
+     *
+     * @param type
+     * @param title
+     * @param count
+     * @returns {*|jQuery|HTMLElement}
+     */
+    self.generateScoringElement = function(type, title, count) {
+        var scoringElement = $("<div>", {'class': type});
+        var highScoreTitle = $("<span>", {'class': 'title', 'html': title});
+        var highScoreCount = $("<span>", {'class': 'count', 'html': count});
+
+        scoringElement.append(highScoreTitle);
+        scoringElement.append(highScoreCount);
+
+        return scoringElement;
+    };
+
+    /**
+     * Load high score from local storage
+     */
+    self.getHighScoreCount = function () {
+        var highScore = 0;
+        if (localStorage[self.prefix + 'highScore']) {
+            highScore = Number(localStorage[self.prefix + 'highScore']);
+        }
+        return highScore;
+    };
+
+    /**
+     * Update High Score
+     */
+    self.complete = function() {
+        var highScore = self.base.find('.high-score > .count');
+        if (localStorage[self.prefix + 'highScore'] && Number(localStorage[self.prefix + 'highScore']) < self.score) {
+            localStorage[self.prefix + 'highScore'] = self.score;
+            highScore.html(self.score);
+        } else if (!localStorage[self.prefix + 'highScore']) {
+            localStorage[self.prefix + 'highScore'] = self.score;
+            highScore.html(self.score);
+        }
+    };
+
+    /**
+     * Updates the player with a move
+     */
+    self.moves = function() {
+        self.move++;
+        var counter = self.base.find('.moves > .count');
+        counter.html(self.move);
+    };
+
+    /**
+     * Scores for the player
+     */
+    self.scores = function() {
+        self.score++;
+        var counter = self.base.find('.score > .count');
+        counter.html(self.score);
+    };
+
+    /**
+     * Check if player is AI or not
+     *
+     * @returns {boolean}
+     */
+    self.isAI = function() {
+        return false;
+    };
+
+    /**
+     * Play a move
+     *
+     * @returns {*}
+     */
+    self.play = function() {
+        return true;
+    };
+
+    /**
+     * Registers an invalid move
+     */
+    self.invalidMove = function() {
+        return true;
+    };
+
+    /**
+     * Returns player name
+     *
+     * @returns {string}
+     */
+    self.getName = function() {
+        return 'Player ' + self.number;
+    }
+}
+
+/**
+ * AI player class
+ *
+ * @todo add configurable difficulty levels
+ *
+ * @param number
+ * @param cardTotal
+ * @constructor
+ */
+function AI(number, cardTotal) {
+    var self = this;
+
+    /**
+     * Players number
+     */
+    self.number = number;
+
+    /**
+     * Player prefix
+     *
+     * @type {string}
+     */
+    self.prefix = 'p' + number;
+
+    /**
+     * Players current move count
+     *
+     * @type {number}
+     */
+    self.move = 0;
+
+    /**
+     * Players current score
+     *
+     * @type {number}
+     */
+    self.score = 0;
+
+    /**
+     * Base html element for the player stats
+     *
+     * @type {null}
+     */
+    self.base = null;
+
+    /**
+     * Total number of cards in the game
+     */
+    self.cardTotal = cardTotal;
+
+    /**
+     * Object containing all cards seen and their index
+     * @type {{}}
+     */
+    self.cardMemory = {};
+
+    /**
+     * Currently visible card
+     *
+     * @type {null}
+     */
+    self.visibleCard = null;
+
+    /**
+     * Flag to indicate an invalid move
+     *
+     * @type {boolean}
+     */
+    self.invalid = false;
+
+    /**
+     * Flag to indicate the game is finished
+     *
+     * @type {boolean}
+     */
+    self.finished = false;
+
+    /**
+     * Index for a recognized matching card
+     *
+     * @type {boolean|number}
+     */
+    self.matchedIndex = false;
+
+    /**
+     * Build and return the html elements for this player
+     *
+     * @returns {null|*}
+     */
+    self.buildPlayerStatsElement = function () {
+        var playerStats = $("<div>", {'class': 'p' + self.number});
+
+        playerStats.append($("<div>", {'class' : 'player-name', 'html' : 'Player ' + self.number}));
+        playerStats.append(self.generateScoringElement('score', 'Score: ', 0));
+        playerStats.append(self.generateScoringElement('moves', 'Moves: ', 0));
+
+        self.base = playerStats;
+
+        return self.base;
+    };
+
+    /**
+     * Build a scoring element
+     *
+     * @param type
+     * @param title
+     * @param count
+     * @returns {*|jQuery|HTMLElement}
+     */
+    self.generateScoringElement = function(type, title, count) {
+        var scoringElement = $("<div>", {'class': type});
+        var highScoreTitle = $("<span>", {'class': 'title', 'html': title});
+        var highScoreCount = $("<span>", {'class': 'count', 'html': count});
+
+        scoringElement.append(highScoreTitle);
+        scoringElement.append(highScoreCount);
+
+        return scoringElement;
+    };
+
+    /**
+     * Complete the game for this player
+     *
+     * @returns {boolean}
+     */
+    self.complete = function(){
+        self.finished = true;
+        return true;
+    };
+
+    /**
+     * Updates the player with a move
+     */
+    self.moves = function() {
+        self.move++;
+        var counter = self.base.find('.moves > .count');
+        counter.html(self.move);
+    };
+
+    /**
+     * Scores for the player
+     */
+    self.scores = function() {
+        self.score++;
+        var counter = self.base.find('.score > .count');
+        counter.html(self.score);
+    };
+
+    /**
+     * Check if player is AI or not
+     *
+     * @returns {boolean}
+     */
+    self.isAI = function() {
+        return true;
+    };
+
+    /**
+     * Play a move
+     *
+     * @returns {*}
+     */
+    self.play = function() {
+        if (self.finished) {
+            return false;
+        }
+
+        self.matchedIndex = false;
+        $.each(self.cardMemory, function(index, value) {
+            if (index != self.visibleCardIndex && value == self.visibleCard) {
+                self.matchedIndex = index;
             }
         });
+
+        if (self.matchedIndex === false) {
+            self.matchedIndex = self.random();
+        }
+
+        var selectedCard = $('.game-board .card').eq(self.matchedIndex);
+
+        selectedCard.trigger('click');
+
+        if (self.invalid) {
+            self.invalid = false;
+            return self.play();
+        }
+
+        if (null === self.visibleCard) {
+            self.visibleCard = selectedCard.data('img');
+            self.visibleCardIndex = selectedCard.data('index');
+        } else {
+            self.visibleCard = null;
+            self.visibleCardIndex = null;
+        }
+
+        if (!self.cardMemory[selectedCard.data('index')] && selectedCard.data('img') !== null){
+            self.cardMemory[selectedCard.data('index')] = selectedCard.data('img');
+        }
+    };
+
+    /**
+     * Return random index for self.cards where each index may only be used twice
+     *
+     * @returns {number}
+     */
+    self.random = function () {
+        var rand = Math.floor(Math.random() * self.cardTotal);
+
+        var match = false;
+        var memoryCount = 0;
+        $.each(self.cardMemory, function(index) {
+            if (index == rand) {
+                match = true
+            }
+            memoryCount++;
+        });
+
+        if (match && memoryCount != self.cardTotal) {
+            rand = self.random();
+        }
+
+        return rand;
+    };
+
+    /**
+     * Registers an invalid move
+     */
+    self.invalidMove = function() {
+        self.invalid = true;
+    };
+
+    /**
+     * Returns player name
+     *
+     * @returns {string}
+     */
+    self.getName = function() {
+        return 'AI ' + self.number;
     };
 }

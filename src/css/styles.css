@@ -3,6 +3,12 @@ html {
     background-size: cover;
 }
 
+body {
+    color: white;
+    font-family: "HearthStone";
+    font-size: 1em;
+}
+
 .game-board {
     margin-top  : 10%;
     margin-left : 10%;
@@ -15,15 +21,41 @@ html {
     background-image    : url("../img/box-back.png");
     background-size     : contain;
     float               : left;
-    margin              : 1.5%;
+    margin              : 1%;
     border-radius       : 10px;
+    border              : 1px transparent;
+    -webkit-box-sizing  : border-box;
+    -moz-box-sizing     : border-box;
+    box-sizing          : border-box;
 }
 
-.score,
-.high-score {
-    color: white;
-    font-family: "HearthStone";
-    font-size: large;
+.card:hover {
+    transform: scale(1.1);
+}
+
+.p1-active:hover {
+    border: 1px solid blue;
+}
+
+.p2-active:hover {
+    border: 1px solid green;
+}
+
+.player-name {
+    font-size: 2em;
+}
+
+
+.p1 {
+    float: left;
+}
+
+.p2 {
+    float: right;
+}
+
+.clear {
+    clear :both;
 }
 
 @font-face {
@@ -41,4 +73,38 @@ html {
     100% {
         transform: scale(1,1);
     }
+}
+
+.menu {
+    position: absolute;
+    top:50%;
+    left:50%;
+    width: 400px;
+    margin-left: -200px;
+}
+
+.menu .winner {
+    font-size: 3em;
+    vertical-align:middle;
+    text-align: center;
+}
+
+.menu .start,
+.menu .restart {
+    color: #4E3C22;
+    font-size: 2em;
+    background:url(../img/button-bg.png);
+    cursor:pointer;
+    vertical-align:middle;
+    width: 272px;
+    height: 66px;
+    line-height:66px;
+    margin:auto;
+    padding: 5px;
+    text-align: center;
+}
+.start:active,
+.restart:active {
+    color:white;
+    transform: scale(0.95, 0.95);
 }
